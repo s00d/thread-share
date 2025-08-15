@@ -1,10 +1,10 @@
-# Thread-Share
-
 [![Crates.io](https://img.shields.io/crates/v/thread-share?style=for-the-badge)](https://crates.io/crates/thread-share)
 [![Documentation](https://img.shields.io/badge/docs-docs.rs-blue?style=for-the-badge)](https://docs.rs/thread-share/)
 [![GitHub issues](https://img.shields.io/badge/github-issues-orange?style=for-the-badge)](https://github.com/s00d/thread-share/issues)
 [![GitHub stars](https://img.shields.io/badge/github-stars-yellow?style=for-the-badge)](https://github.com/s00d/thread-share/stargazers)
 [![Donate](https://img.shields.io/badge/Donate-Donationalerts-ff4081?style=for-the-badge)](https://www.donationalerts.com/r/s00d88)
+
+# Thread-Share
 
 > **"I got tired of playing around with data passing between threads and decided to write this library"**
 
@@ -59,29 +59,17 @@ The library automatically handles:
 - **🔌 Socket Client Example**: **NEW!** Complete working example with Node.js server
 - **📄 Serialization Support**: **NEW!** Optional JSON serialization with `serialize` feature
 
-## 📋 Table of Contents
-
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-- [API Reference](#api-reference)
-- [Usage Patterns](#usage-patterns)
-- [Examples](#examples)
-- [Performance Considerations](#performance-considerations)
-- [Requirements](#requirements)
-- [License](#license)
-
 ## 📦 Installation
 
 Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-thread-share = "0.1.0"
+thread-share = "0.1.1"
 
 # Optional: Enable serialization support
 [dependencies]
-thread-share = { version = "0.1.0", features = ["serialize"] }
+thread-share = { version = "0.1.1", features = ["serialize"] }
 ```
 
 ### Features
