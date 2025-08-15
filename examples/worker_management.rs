@@ -44,7 +44,7 @@ fn main() {
 
     // Demonstrate creating WorkerManager directly
     println!("\n🔨 Creating additional WorkerManager directly...");
-    let direct_manager = WorkerManager::new(data.get_threads());
+    let direct_manager = WorkerManager::new_with_threads(data.get_threads());
     
     // Add processor worker programmatically
     let data_clone1 = data.clone();

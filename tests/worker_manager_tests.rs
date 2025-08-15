@@ -7,7 +7,7 @@ use thread_share::worker_manager::WorkerManager;
 #[test]
 fn test_worker_manager_new() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     assert_eq!(manager.active_workers(), 0);
     assert!(manager.get_worker_names().is_empty());
@@ -16,7 +16,7 @@ fn test_worker_manager_new() {
 #[test]
 fn test_add_worker() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager =  WorkerManager::new_with_threads(threads);
     
     // Add a worker
     let handle = thread::spawn(|| {
@@ -33,7 +33,7 @@ fn test_add_worker() {
 #[test]
 fn test_add_duplicate_worker() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add first worker
     let handle1 = thread::spawn(|| {
@@ -58,7 +58,7 @@ fn test_add_duplicate_worker() {
 #[test]
 fn test_remove_worker() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add a worker
     let handle = thread::spawn(|| {
@@ -79,7 +79,7 @@ fn test_remove_worker() {
 #[test]
 fn test_remove_nonexistent_worker() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     let result = manager.remove_worker("nonexistent");
     assert!(result.is_err());
@@ -89,7 +89,7 @@ fn test_remove_nonexistent_worker() {
 #[test]
 fn test_remove_all_workers() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add multiple workers
     for i in 0..3 {
@@ -113,7 +113,7 @@ fn test_remove_all_workers() {
 #[test]
 fn test_pause_and_resume_worker() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add a worker
     let handle = thread::spawn(|| {
@@ -139,7 +139,7 @@ fn test_pause_and_resume_worker() {
 #[test]
 fn test_worker_names() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add workers with specific names
     let names = vec!["worker_a", "worker_b", "worker_c"];
@@ -164,7 +164,7 @@ fn test_worker_names() {
 #[test]
 fn test_active_workers_count() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     assert_eq!(manager.active_workers(), 0);
     
@@ -193,7 +193,7 @@ fn test_active_workers_count() {
 #[test]
 fn test_join_all_workers() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add workers that complete quickly
     for i in 0..3 {
@@ -216,7 +216,7 @@ fn test_join_all_workers() {
 #[test]
 fn test_clone_worker_manager() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add a worker
     let handle = thread::spawn(|| {
@@ -239,7 +239,7 @@ fn test_clone_worker_manager() {
 #[test]
 fn test_worker_manager_with_long_running_workers() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Add a long-running worker
     let handle = thread::spawn(|| {
@@ -263,7 +263,7 @@ fn test_worker_manager_with_long_running_workers() {
 #[test]
 fn test_worker_manager_edge_cases() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = WorkerManager::new(threads);
+    let manager = WorkerManager::new_with_threads(threads);
     
     // Test with empty name
     let handle = thread::spawn(|| {
@@ -287,7 +287,7 @@ fn test_worker_manager_edge_cases() {
 #[test]
 fn test_worker_manager_concurrent_access() {
     let threads = Arc::new(Mutex::new(HashMap::new()));
-    let manager = Arc::new(WorkerManager::new(threads));
+    let manager = Arc::new(WorkerManager::new_with_threads(threads));
     
     // Spawn multiple threads that add workers concurrently
     let mut handles = vec![];

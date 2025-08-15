@@ -710,6 +710,25 @@ fn main() {
 
 You can also create `WorkerManager` directly without using the `spawn_workers!` macro:
 
+#### **Option 1: Create Empty Manager**
+
+```rust
+use thread_share::worker_manager::WorkerManager;
+use std::thread;
+
+// Create empty manager
+let manager = WorkerManager::new();
+
+// Add workers programmatically
+let handle = thread::spawn(|| {
+    println!("Worker doing work...");
+});
+
+manager.add_worker("worker", handle).expect("Failed to add worker");
+```
+
+#### **Option 2: Create with Existing Threads**
+
 ```rust
 use thread_share::{enhanced_share, worker_manager::WorkerManager};
 use std::thread;
@@ -763,7 +782,7 @@ fn main() {
     let processor = enhanced_share!(TaskProcessor::new());
     
     // Create WorkerManager directly
-    let manager = WorkerManager::new(processor.get_threads());
+    let manager = WorkerManager::new_with_threads(processor.get_threads());
     
     // Spawn task generator worker
     let processor_clone1 = processor.clone();

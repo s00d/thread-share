@@ -85,6 +85,41 @@
 //! assert_eq!(manager.active_workers(), 2);
 //! ```
 //!
+//! ## Creating Empty Manager and Adding Workers
+//!
+//! ```rust
+//! use thread_share::worker_manager::WorkerManager;
+//! use std::thread;
+//! use std::time::Duration;
+//!
+//! // Create empty manager
+//! let manager = WorkerManager::new();
+//!
+//! // Add workers one by one
+//! let handle1 = thread::spawn(|| {
+//!     for i in 1..=5 {
+//!         println!("Worker 1: {}", i);
+//!         thread::sleep(Duration::from_millis(100));
+//!     }
+//! });
+//!
+//! let handle2 = thread::spawn(|| {
+//!     for i in 1..=3 {
+//!         println!("Worker 2: {}", i);
+//!         thread::sleep(Duration::from_millis(150));
+//!     }
+//! });
+//!
+//! manager.add_worker("worker1", handle1).expect("Failed to add worker1");
+//! manager.add_worker("worker2", handle2).expect("Failed to add worker2");
+//!
+//! assert_eq!(manager.active_workers(), 2);
+//! println!("Worker names: {:?}", manager.get_worker_names());
+//!
+//! // Wait for completion
+//! manager.join_all().expect("Workers failed");
+//! ```
+//!
 //! ## Worker Lifecycle Management
 //!
 //! ```rust
@@ -211,7 +246,21 @@ use std::thread;
 /// use std::collections::HashMap;
 ///
 /// let threads = Arc::new(Mutex::new(HashMap::new()));
-/// let manager = WorkerManager::new(threads);
+/// let manager = WorkerManager::new_with_threads(threads);
+/// ```
+///
+/// Or create an empty manager and add workers later:
+///
+/// ```rust
+/// use thread_share::worker_manager::WorkerManager;
+/// use std::thread;
+///
+/// // Create empty manager
+/// let manager = WorkerManager::new();
+///
+/// // Add workers as needed
+/// let handle = thread::spawn(|| { /* work */ });
+/// manager.add_worker("worker", handle).expect("Failed to add worker");
 /// ```
 ///
 /// ## Thread Safety
@@ -269,7 +318,36 @@ pub struct WorkerManager {
 }
 
 impl WorkerManager {
-    /// Creates a new WorkerManager
+    /// Creates a new empty WorkerManager
+    ///
+    /// This method creates a WorkerManager with an empty thread tracking structure.
+    /// Useful when you want to create a manager first and add workers later.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use thread_share::worker_manager::WorkerManager;
+    /// use std::thread;
+    ///
+    /// // Create empty manager
+    /// let manager = WorkerManager::new();
+    ///
+    /// // Add workers programmatically
+    /// let handle = thread::spawn(|| {
+    ///     println!("Worker doing work...");
+    /// });
+    ///
+    /// manager.add_worker("worker1", handle).expect("Failed to add worker");
+    /// assert_eq!(manager.active_workers(), 1);
+    /// ```
+    pub fn new() -> Self {
+        Self {
+            threads: Arc::new(Mutex::new(HashMap::new())),
+            paused_workers: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Creates a new WorkerManager with existing thread handles
     ///
     /// ## Arguments
     ///
@@ -283,9 +361,9 @@ impl WorkerManager {
     /// use std::collections::HashMap;
     ///
     /// let threads = Arc::new(Mutex::new(HashMap::new()));
-    /// let manager = WorkerManager::new(threads);
+    /// let manager = WorkerManager::new_with_threads(threads);
     /// ```
-    pub fn new(threads: Arc<Mutex<HashMap<String, thread::JoinHandle<()>>>>) -> Self {
+    pub fn new_with_threads(threads: Arc<Mutex<HashMap<String, thread::JoinHandle<()>>>>) -> Self {
         Self {
             threads,
             paused_workers: Arc::new(Mutex::new(HashMap::new())),
@@ -315,7 +393,7 @@ impl WorkerManager {
     /// use std::thread;
     ///
     /// let threads = Arc::new(Mutex::new(HashMap::new()));
-    /// let manager = WorkerManager::new(threads.clone());
+    /// let manager = WorkerManager::new_with_threads(threads.clone());
     ///
     /// // Spawn a thread manually
     /// let handle = thread::spawn(|| {

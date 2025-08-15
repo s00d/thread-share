@@ -483,7 +483,7 @@ macro_rules! spawn_workers {
             $(
                 $shared.spawn(stringify!($name), $func).expect(&format!("Failed to spawn {}", stringify!($name)));
             )*
-            $crate::worker_manager::WorkerManager::new($shared.get_threads())
+            $crate::worker_manager::WorkerManager::new_with_threads($shared.get_threads())
         }
     };
 }

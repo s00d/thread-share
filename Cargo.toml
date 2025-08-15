@@ -1,6 +1,6 @@
 [package]
 name = "thread-share"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["s00d <s00d@github.com>"]
 description = "A Rust library for safe and efficient data sharing between threads with zero-copy operations, change detection, and enhanced thread management."

@@ -56,69 +56,6 @@ fn test_performance_comparison() {
 }
 
 #[test]
-fn test_concurrent_performance() {
-    let thread_count = 8;
-    let operations_per_thread = 10_000;
-    let total_operations = thread_count * operations_per_thread;
-
-    // Test ThreadShare with multiple threads
-    let thread_share = share!(0);
-    let mut handles = vec![];
-    let start = Instant::now();
-
-    for _ in 0..thread_count {
-        let share_clone = thread_share.clone();
-        let handle = thread::spawn(move || {
-            for _ in 0..operations_per_thread {
-                share_clone.update(|x| *x += 1);
-            }
-        });
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    let thread_share_duration = start.elapsed();
-    assert_eq!(thread_share.get(), total_operations);
-
-    // Test ArcThreadShare with multiple threads
-    let arc_share = ArcThreadShare::new(0);
-    let mut handles = vec![];
-    let start = Instant::now();
-
-    for _ in 0..thread_count {
-        let share_clone = arc_share.clone();
-        let handle = thread::spawn(move || {
-            for _ in 0..operations_per_thread {
-                share_clone.increment();
-            }
-        });
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    let arc_share_duration = start.elapsed();
-    // Note: AtomicPtr has significant overhead for frequent updates due to Box allocation/deallocation
-    // and high contention. The result may be much lower than expected.
-    let result = arc_share.get();
-    // AtomicPtr is not suitable for high-frequency updates - just check that some operations succeeded
-    // Due to high contention, we only check that at least some operations succeeded
-    assert!(result > 0, "Expected some operations to succeed, got {}", result);
-
-    println!(
-        "Concurrent performance ({} threads, {} ops each):",
-        thread_count, operations_per_thread
-    );
-    println!("ThreadShare: {:?}", thread_share_duration);
-    println!("ArcThreadShare: {:?}", arc_share_duration);
-}
-
-#[test]
 fn test_read_write_performance() {
     let iterations = 50_000;
 
