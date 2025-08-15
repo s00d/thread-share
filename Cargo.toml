@@ -1,6 +1,6 @@
 [package]
 name = "thread-share"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 authors = ["s00d <s00d@github.com>"]
 description = "A Rust library for safe and efficient data sharing between threads with zero-copy operations, change detection, and enhanced thread management."
@@ -31,6 +31,8 @@ optional = true
 
 [dev-dependencies]
 parking_lot = "0.12"
+tokio = { version = "1.0", features = ["full"] }
+async-std = { version = "1.0", features = ["attributes", "tokio1"] }
 
 [package.metadata.docs.rs]
 all-features = true
