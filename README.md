@@ -58,6 +58,8 @@ The library automatically handles:
 - **🌐 HTTP Server Example**: Complete HTTP server with visit tracking
 - **🔌 Socket Client Example**: Complete working example with Node.js server
 - **📄 Serialization Support**: Optional JSON serialization with `serialize` feature
+- **🔄 Rust 2024 Compatible**: Updated for latest Rust edition compatibility
+- **🚀 spawn_workers Macro**: Simplified multi-threading with single macro call
 
 ## 📦 Installation
 
@@ -76,6 +78,20 @@ thread-share = { version = "0.1.1", features = ["serialize"] }
 
 - **`default`**: Standard functionality without serialization
 - **`serialize`**: Adds JSON serialization support using `serde` and `serde_json`
+
+## 🆕 Recent Updates
+
+### Rust 2024 Compatibility
+- ✅ **Updated to Rust 1.85.0+** for full Rust 2024 edition support
+- ✅ **Fixed drop order warnings** for Rust 2024 compatibility
+- ✅ **Modernized macro syntax** from `expr_2021` to `expr`
+- ✅ **Enhanced thread management** with `spawn_workers!` macro
+
+### Enhanced Examples
+- 🚀 **HTTP Server Example** now uses `spawn_workers!` macro
+- 🔌 **Socket Client Example** demonstrates automatic thread management
+- 📊 **All examples** now use English comments for better international accessibility
+- 🧵 **Simplified threading** with single macro calls
 
 ## 🚀 Quick Start
 
@@ -212,10 +228,10 @@ fn main() {
         connection: |client| { /* connection logic */ },
         sender: |client| { /* sender logic */ },
         receiver: |client| { /* receiver logic */ }
-    })?;
+    });
     
     // Automatic thread joining
-    client.join_all()?;
+    client.join_all().expect("Failed to join threads");
 }
 ```
 
@@ -253,26 +269,31 @@ A complete HTTP server implementation demonstrating real-world usage of ThreadSh
 
 - **HTTP/1.1 Server**: Full HTTP protocol implementation
 - **Multiple Endpoints**: `/`, `/status`, `/health` routes
-- **Visit Counter**: Shared counter using `share!(0)` macro
+- **Visit Counter**: Shared counter using `enhanced_share!(0)` macro
 - **Connection Tracking**: Real-time connection monitoring
-- **Thread Management**: Uses `EnhancedThreadShare` for server threads
+- **Thread Management**: Uses `spawn_workers!` macro for automatic thread management
 - **Smart Request Filtering**: Counts only main page visits, not static resources
 
 ### 🔧 How It Works
 
 ```rust
-// Create HTTP server with ThreadShare
+// Create HTTP server with EnhancedThreadShare
 let server = enhanced_share!(HttpServer::new(port));
 
-// Create visit counter using share! macro
-let visits = share!(0);
+// Create visit counter using enhanced_share! macro
+let visits = enhanced_share!(0);
 
-// Spawn server threads
-server.spawn("server_main", move |server| {
-    // Handle HTTP requests
-    // Increment visits only for main pages
-    if is_main_page {
-        visits_clone.update(|v| *v += 1);
+// Spawn all server threads with single macro call!
+spawn_workers!(server, {
+    server_main: move |server| {
+        // Handle HTTP requests
+        // Increment visits only for main pages
+        if is_main_page {
+            visits_clone.update(|v| *v += 1);
+        }
+    },
+    monitor: |server| {
+        // Monitor server status
     }
 });
 ```
@@ -280,9 +301,9 @@ server.spawn("server_main", move |server| {
 ### 📊 Key Components
 
 1. **HttpServer**: Main server struct with connection tracking
-2. **Visit Counter**: Shared `u32` counter using `share!` macro
+2. **Visit Counter**: Shared `u32` counter using `enhanced_share!` macro
 3. **Request Filtering**: Distinguishes between main pages and static resources
-4. **Thread Management**: Automatic thread spawning and joining
+4. **Thread Management**: **Automatic thread spawning and joining with `spawn_workers!`**
 5. **Real-time Monitoring**: Live server status updates
 
 ### 🎯 Use Cases
@@ -1136,7 +1157,7 @@ locked_share.update(|data| {
 
 ## 🔧 Requirements
 
-- **Rust**: 1.70 or higher
+- **Rust**: 1.85.0 or higher (for Rust 2024 edition compatibility)
 - **Dependencies**: 
   - `parking_lot` (required) - Efficient synchronization primitives
   - `serde` (optional) - Serialization support
