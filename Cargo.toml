@@ -1,0 +1,37 @@
+[package]
+name = "thread-share"
+version = "0.1.0"
+edition = "2021"
+authors = ["s00d <s00d@github.com>"]
+description = "A Rust library for safe and efficient data sharing between threads with zero-copy operations, change detection, and enhanced thread management."
+license = "MIT"
+repository = "https://github.com/s00d/thread-share"
+homepage = "https://github.com/s00d/thread-share"
+documentation = "https://docs.rs/thread-share"
+readme = "README.md"
+keywords = ["thread", "concurrency", "shared-data", "zero-copy", "thread-safe"]
+categories = ["concurrency", "asynchronous", "data-structures"]
+rust-version = "1.70"
+
+[dependencies]
+parking_lot = "0.12"
+
+[features]
+default = []
+serialize = ["serde", "serde_json"]
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+optional = true
+
+[dependencies.serde_json]
+version = "1.0"
+optional = true
+
+[dev-dependencies]
+parking_lot = "0.12"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
