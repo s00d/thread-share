@@ -282,7 +282,7 @@ let server = enhanced_share!(HttpServer::new(port));
 
 // Create visit counter using enhanced_share! macro
 let visits = enhanced_share!(0);
-
+let visits_clone = visits.clone();
 // Spawn all server threads with single macro call!
 spawn_workers!(server, {
     server_main: move |server| {
