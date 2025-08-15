@@ -34,8 +34,8 @@ Whether you're building a game engine, web server, or data processing pipeline, 
 2. **SimpleShare<T>** - Lightweight wrapper around `Arc<Mutex<T>>` for basic use cases  
 3. **ArcThreadShare<T>** - Uses `Arc<AtomicPtr<T>>` for lock-free, zero-copy operations
 4. **ArcThreadShareLocked<T>** - Provides safe zero-copy access with `Arc<RwLock<T>>`
-5. **EnhancedThreadShare<T>** - **NEW!** Extends ThreadShare with automatic thread management
-6. **ThreadManager** - **NEW!** Standalone thread management utility
+5. **EnhancedThreadShare<T>** - Extends ThreadShare with automatic thread management
+6. **ThreadManager** - Standalone thread management utility
 
 The library automatically handles:
 - **Memory management** with proper Arc cloning and cleanup
@@ -52,12 +52,12 @@ The library automatically handles:
 - **🔄 Change Detection**: Built-in waiting mechanisms for data changes
 - **🔧 Flexible**: Support for any data types with automatic trait implementations
 - **✨ Macro Support**: Convenient macros for quick setup
-- **🧵 Enhanced Thread Management**: **NEW!** Automatic thread spawning and joining
-- **🚀 Simplified Syntax**: **NEW!** Single macro call for multiple threads
-- **📊 Thread Monitoring**: **NEW!** Track active thread count and status
-- **🌐 HTTP Server Example**: **NEW!** Complete HTTP server with visit tracking
-- **🔌 Socket Client Example**: **NEW!** Complete working example with Node.js server
-- **📄 Serialization Support**: **NEW!** Optional JSON serialization with `serialize` feature
+- **🧵 Enhanced Thread Management**: Automatic thread spawning and joining
+- **🚀 Simplified Syntax**: Single macro call for multiple threads
+- **📊 Thread Monitoring**: Track active thread count and status
+- **🌐 HTTP Server Example**: Complete HTTP server with visit tracking
+- **🔌 Socket Client Example**: Complete working example with Node.js server
+- **📄 Serialization Support**: Optional JSON serialization with `serialize` feature
 
 ## 📦 Installation
 
@@ -340,7 +340,7 @@ cargo run --example http_integration_helpers
 - **No Cloning**: Direct access to shared data
 - **Data Safety**: Guaranteed thread safety with locks
 
-### EnhancedThreadShare<T> - **NEW!** Simplified Thread Management
+### EnhancedThreadShare<T> - Simplified Thread Management
 
 `EnhancedThreadShare<T>` extends ThreadShare with automatic thread management:
 
@@ -435,7 +435,7 @@ impl<T> ArcThreadShare<T> {
 }
 ```
 
-### EnhancedThreadShare<T> - **NEW!**
+### EnhancedThreadShare<T>
 
 ```rust
 impl<T> EnhancedThreadShare<T> {
@@ -476,17 +476,17 @@ share!(data)
 // Creates SimpleShare<T>
 simple_share!(data)
 
-// Creates EnhancedThreadShare<T> - NEW!
+// Creates EnhancedThreadShare<T>
 enhanced_share!(data)
 
-// Spawns multiple threads with EnhancedThreadShare - NEW!
+// Spawns multiple threads with EnhancedThreadShare
 spawn_workers!(shared_data, {
     thread_name1: |data| { /* thread logic */ },
     thread_name2: |data| { /* thread logic */ },
     thread_name3: |data| { /* thread logic */ }
 })
 
-// ThreadManager utilities - NEW!
+// ThreadManager utilities
 spawn_threads!(manager, shared_data, { name: |data| logic })
 thread_setup!(shared_data, { name: |data| logic })
 ```
@@ -902,7 +902,7 @@ fn main() {
 - 📊 **Comprehensive statistics tracking**
 - 🚀 **Ready-to-run example** with Node.js server included
 
-### Enhanced Thread Management - **NEW!**
+### Enhanced Thread Management
 
 The library now provides **EnhancedThreadShare<T>** which eliminates the need for manual thread management:
 
@@ -1116,17 +1116,17 @@ locked_share.update(|data| {
 | **SimpleShare** | Simple data sharing | Medium | High | High | Manual |
 | **ArcThreadShare** | High-performance, atomic ops | High | Medium | Low (under contention) | Manual |
 | **ArcThreadShareLocked** | Safe zero-copy | Medium | High | High | Manual |
-| **EnhancedThreadShare** | **NEW!** Simplified multi-threading | Medium | High | High | **Automatic** |
+| **EnhancedThreadShare** | Simplified multi-threading | Medium | High | High | **Automatic** |
 
 ### Performance Tips
 
 1. **Use `ArcThreadShare`** for frequently updated data where performance is critical
 2. **Use `ThreadShare`** for general-purpose applications with moderate update frequency
-3. **Use `EnhancedThreadShare`** for **NEW!** simplified multi-threading without manual management
+3. **Use `EnhancedThreadShare`** for simplified multi-threading without manual management
 4. **Avoid excessive cloning** by using zero-copy patterns when possible
 5. **Batch updates** when possible to reduce synchronization overhead
 6. **Consider data size** - small data types benefit more from atomic operations
-7. **Use `spawn_workers!` macro** for **NEW!** efficient multi-thread spawning
+7. **Use `spawn_workers!` macro** for * efficient multi-thread spawning
 
 ### Memory Overhead Comparison
 
@@ -1271,9 +1271,9 @@ The library includes comprehensive examples in the `examples/` directory:
 - **`atomic_usage.rs`** - Working with ArcThreadShare for zero-copy operations
 - **`no_clone_usage.rs`** - Examples without cloning data
 - **`advanced_usage.rs`** - Complex scenarios and patterns
-- **`socket_client_usage.rs`** - **NEW!** Enhanced socket client with automatic thread management
-- **`socket_server.js`** - **NEW!** Node.js TCP server for testing the client
-- **`http_integration_helpers.rs`** - **NEW!** Complete HTTP server with visit tracking
+- **`socket_client_usage.rs`** - Enhanced socket client with automatic thread management
+- **`socket_server.js`** - Node.js TCP server for testing the client
+- **`http_integration_helpers.rs`** - Complete HTTP server with visit tracking
 
 ### 🧪 Test Suite
 Comprehensive test coverage in the `tests/` directory:
@@ -1313,7 +1313,7 @@ cargo test --test performance_tests
 3. **Try `examples/atomic_usage.rs`** - Learn about zero-copy patterns
 4. **Study `tests/integration_tests.rs`** - See real-world usage patterns
 5. **Run `tests/performance_tests.rs`** - Understand performance characteristics
-6. **Explore `examples/http_integration_helpers.rs`** - **NEW!** Real HTTP server with ThreadShare
+6. **Explore `examples/http_integration_helpers.rs`** - Real HTTP server with ThreadShare
 
 ### 🔍 Debugging Tests
 
