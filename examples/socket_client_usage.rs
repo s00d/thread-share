@@ -2,7 +2,7 @@ use std::net::TcpStream;
 use std::time::Duration;
 use thread_share::{enhanced_share, spawn_workers};
 
-// Структуры для работы с сокет-клиентом
+// Structures for socket client work
 #[derive(Clone, Debug)]
 struct SocketStatus {
     is_connected: bool,
@@ -78,7 +78,7 @@ impl SocketClient {
             return Err("Not connected".to_string());
         }
 
-        // Симулируем отправку (в реальном приложении здесь был бы TcpStream)
+        // Simulate sending (in real app there would be TcpStream)
         let bytes_sent = message.len();
         self.stats.messages_sent += 1;
         self.stats.total_bytes_sent += bytes_sent as u64;
@@ -96,7 +96,7 @@ impl SocketClient {
             return Err("Not connected".to_string());
         }
 
-        // Симулируем получение ответа
+        // Simulate receiving response
         let response = format!(
             "Server response to message {}",
             self.stats.messages_received + 1
@@ -113,10 +113,10 @@ impl SocketClient {
 fn main() {
     println!("=== Socket Client Example with EnhancedThreadShare ===");
 
-    // Создаем общий клиент сокета с улучшенным управлением потоками
+    // Create shared socket client with enhanced thread management
     let client = enhanced_share!(SocketClient::new("localhost:8080".to_string()));
 
-    // Запускаем все потоки одной командой!
+    // Start all threads with one command!
     spawn_workers!(client, {
         connection: |client: thread_share::ThreadShare<SocketClient>| {
             let mut attempts = 0;
@@ -143,14 +143,14 @@ fn main() {
         },
 
         sender: |client: thread_share::ThreadShare<SocketClient>| {
-            // Ждем подключения
+            // Wait for connection
             while !client.get().status.is_connected {
                 std::thread::sleep(Duration::from_millis(100));
             }
 
             println!("📤 Sender thread started");
 
-            // Отправляем тестовые сообщения
+            // Send test messages
             for i in 1..=5 {
                 let message = format!("Hello Server! Message {}", i);
 
@@ -166,22 +166,22 @@ fn main() {
                 std::thread::sleep(Duration::from_millis(500));
             }
 
-            // Отключаемся после отправки всех сообщений
+            // Disconnect after sending all messages
             client.update(|client| client.disconnect());
             println!("📤 Sender thread finished");
         },
 
         receiver: |client| {
-            // Ждем подключения
+            // Wait for connection
             while !client.get().status.is_connected {
                 std::thread::sleep(Duration::from_millis(100));
             }
 
             println!("📥 Receiver thread started");
 
-            // Получаем ответы от сервера
+            // Receive responses from server
             for _ in 1..=5 {
-                // Ждем немного перед "получением" ответа
+                // Wait a bit before "receiving" response
                 std::thread::sleep(Duration::from_millis(600));
 
                 match client.write(|client| client.receive_message()) {
@@ -194,7 +194,7 @@ fn main() {
                     }
                 }
 
-                // Проверяем, не отключились ли
+                // Check if disconnected
                 if !client.get().status.is_connected {
                     break;
                 }
@@ -204,7 +204,7 @@ fn main() {
         }
     });
 
-    // Главный поток - мониторинг состояния
+    // Main thread - state monitoring
     println!("🚀 Socket Client Example Started");
     println!("🔌 Connecting to localhost:8080...");
 
@@ -216,14 +216,14 @@ fn main() {
         total_bytes_received: 0,
     };
 
-    // Мониторинг в реальном времени
+    // Real-time monitoring
     while client.get().status.is_connected
         || client.get().stats.messages_sent < 5
         || client.get().stats.messages_received < 5
     {
         let current_client = client.get();
 
-        // Выводим изменения статистики
+        // Output statistics changes
         if current_client.stats.messages_sent != last_stats.messages_sent
             || current_client.stats.messages_received != last_stats.messages_received
             || current_client.stats.connection_attempts != last_stats.connection_attempts
@@ -274,10 +274,10 @@ fn main() {
         std::thread::sleep(Duration::from_millis(200));
     }
 
-    // Ждем завершения всех потоков одной командой!
+    // Wait for all threads to complete with one command!
     client.join_all().expect("Failed to join threads");
 
-    // Финальная статистика
+    // Final statistics
     let final_client = client.get();
 
     println!("\n=== 🏁 Final Results ===");

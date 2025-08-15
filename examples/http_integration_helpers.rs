@@ -3,7 +3,7 @@ use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant};
 use thread_share::{enhanced_share, spawn_workers};
 
-// Простой HTTP сервер
+// Simple HTTP server
 #[derive(Clone, Debug)]
 struct HttpServer {
     port: u16,
@@ -60,25 +60,25 @@ impl HttpServer {
 
             println!("📥 {} {}", method, path);
 
-            // Обрабатываем запрос
+            // Process request
             let response = self.process_request(method, path);
 
-            // Отправляем ответ
+            // Send response
             stream
                 .write_all(response.as_bytes())
                 .map_err(|e| e.to_string())?;
             stream.flush().map_err(|e| e.to_string())?;
 
-            // Ждем немного перед закрытием соединения
+            // Wait a bit before closing connection
             std::thread::sleep(Duration::from_millis(100));
 
-            // Увеличиваем счетчик запросов только для основных страниц
+            // Increment request counter only for main pages
             let is_main_page = matches!(path, "/" | "/status" | "/health");
             if is_main_page {
                 self.requests_handled += 1;
             }
 
-            // Возвращаем true если это основная страница (не статика)
+            // Return true if it's a main page (not static)
             return Ok(is_main_page);
         }
 
@@ -163,17 +163,17 @@ impl HttpServer {
 fn main() {
     println!("=== Simple HTTP Server with ThreadShare ===");
 
-    // Создаем HTTP сервер на порту 8445
+    // Create HTTP server on port 8445
     let port = 8445;
     println!("🔍 Using port: {}", port);
 
-    // Создаем HTTP сервер
+    // Create HTTP server
     let server = enhanced_share!(HttpServer::new(port));
 
-    // Создаем счетчик переходов (как в basic_usage.rs) - без клонов!
+    // Create visit counter (like in basic_usage.rs) - without clones!
     let visits = enhanced_share!(0);
 
-    // Запускаем основной поток сервера
+    // Start main server thread
     let visits_clone = visits.clone();
     server
         .spawn(
@@ -181,10 +181,10 @@ fn main() {
             move |server: thread_share::ThreadShare<HttpServer>| {
                 println!("🌐 Server main thread started");
 
-                // Запускаем сервер
+                // Start the server
                 server.update(|s| s.start().expect("Failed to start server"));
 
-                // Создаем TCP listener
+                // Create TCP listener
                 let port = server.get().port;
                 let listener =
                     TcpListener::bind(format!("127.0.0.1:{}", port)).expect("Failed to bind");
@@ -194,33 +194,29 @@ fn main() {
                 println!("   • Status: http://127.0.0.1:{}/status", port);
                 println!("   • Health: http://127.0.0.1:{}/health", port);
 
-                // Принимаем соединения
+                // Accept connections
                 for stream in listener.incoming() {
                     match stream {
                         Ok(mut stream) => {
-                            // Увеличиваем счетчик соединений
+                            // Increment connection counter
                             server.update(|s| s.increment_connections());
 
-                            // Обрабатываем запрос и проверяем, была ли это основная страница
-                            let is_main_page = match server.write(|s| s.handle_request(&mut stream))
-                            {
-                                Ok(is_main) => is_main,
-                                Err(e) => {
-                                    eprintln!("❌ Error handling request: {}", e);
-                                    false
-                                }
-                            };
+                            // Handle request and check if it was a main page
+                            let is_main_page = server.write(|s| s.handle_request(&mut stream)).unwrap_or_else(|e| {
+                                eprintln!("❌ Error handling request: {}", e);
+                                false
+                            });
 
-                            // Увеличиваем счетчик переходов только для основных страниц (не для статики)
+                            // Increment visit counter only for main pages (not for static)
                             if is_main_page {
                                 visits_clone.update(|v| *v += 1);
                                 println!("🌐 Main page visit - visits: {}", visits_clone.get());
                             }
 
-                            // Уменьшаем счетчик соединений
+                            // Decrement connection counter
                             server.update(|s| s.decrement_connections());
 
-                            // Даем время браузеру получить ответ
+                            // Give browser time to receive response
                             std::thread::sleep(Duration::from_millis(200));
                         }
                         Err(e) => {
@@ -228,7 +224,7 @@ fn main() {
                         }
                     }
 
-                    // Проверяем, должен ли сервер остановиться
+                    // Check if server should stop
                     if !server.get().is_running {
                         break;
                     }
@@ -239,12 +235,12 @@ fn main() {
         )
         .expect("Failed to spawn server_main");
 
-    // Запускаем мониторинг через spawn_workers
+    // Start monitoring through spawn_workers
     spawn_workers!(server, {
         monitor: |server: thread_share::ThreadShare<HttpServer>| {
             println!("📊 Monitor thread started");
 
-            // Мониторим сервер в реальном времени
+            // Monitor server in real-time
             for _ in 1..=30 {
                 let current_server = server.get();
 
@@ -258,24 +254,24 @@ fn main() {
                 }
                 std::thread::sleep(Duration::from_secs(2));
             }
-            // Останавливаем сервер через 1 минуту
+            // Stop server after 1 minute
             println!("⏰ Stopping server after 1 minute...");
             server.update(|s| s.stop());
             println!("📊 Monitor thread finished");
         }
     });
 
-    // Убираем симуляцию - visits будет увеличиваться только при реальных HTTP запросах
+    // Remove simulation - visits will only increase with real HTTP requests
 
-    // Главный поток - ждем завершения
+    // Main thread - wait for completion
     println!("🚀 HTTP Server Example Started");
     println!("🌐 Server will run for 1 minute");
     println!("🧵 Active threads: {}", server.active_threads());
 
-    // Ждем завершения всех потоков
+    // Wait for all threads to complete
     server.join_all().expect("Failed to join threads");
 
-    // Финальная статистика
+    // Final statistics
     let final_server = server.get();
     let final_visits = visits.get();
 
