@@ -173,70 +173,64 @@ fn main() {
     // Create visit counter (like in basic_usage.rs) - without clones!
     let visits = enhanced_share!(0);
 
-    // Start main server thread
+    // Start all threads with spawn_workers!
     let visits_clone = visits.clone();
-    server
-        .spawn(
-            "server_main",
-            move |server: thread_share::ThreadShare<HttpServer>| {
-                println!("🌐 Server main thread started");
+    spawn_workers!(server, {
+        server_main: move |server: thread_share::ThreadShare<HttpServer>| {
+            println!("🌐 Server main thread started");
 
-                // Start the server
-                server.update(|s| s.start().expect("Failed to start server"));
+            // Start the server
+            server.update(|s| s.start().expect("Failed to start server"));
 
-                // Create TCP listener
-                let port = server.get().port;
-                let listener =
-                    TcpListener::bind(format!("127.0.0.1:{}", port)).expect("Failed to bind");
-                println!("🔌 Listening on http://127.0.0.1:{}", port);
-                println!("🌐 Server URLs:");
-                println!("   • Main page: http://127.0.0.1:{}/", port);
-                println!("   • Status: http://127.0.0.1:{}/status", port);
-                println!("   • Health: http://127.0.0.1:{}/health", port);
+            // Create TCP listener
+            let port = server.get().port;
+            let listener =
+                TcpListener::bind(format!("127.0.0.1:{}", port)).expect("Failed to bind");
+            println!("🔌 Listening on http://127.0.0.1:{}", port);
+            println!("🌐 Server URLs:");
+            println!("   • Main page: http://127.0.0.1:{}/", port);
+            println!("   • Status: http://127.0.0.1:{}/status", port);
+            println!("   • Health: http://127.0.0.1:{}/health", port);
 
-                // Accept connections
-                for stream in listener.incoming() {
-                    match stream {
-                        Ok(mut stream) => {
-                            // Increment connection counter
-                            server.update(|s| s.increment_connections());
+            // Accept connections
+            for stream in listener.incoming() {
+                match stream {
+                    Ok(mut stream) => {
+                        // Increment connection counter
+                        server.update(|s| s.increment_connections());
 
-                            // Handle request and check if it was a main page
-                            let is_main_page = server.write(|s| s.handle_request(&mut stream)).unwrap_or_else(|e| {
-                                eprintln!("❌ Error handling request: {}", e);
-                                false
-                            });
+                        // Handle request and check if it was a main page
+                        let is_main_page = server.write(|s| s.handle_request(&mut stream)).unwrap_or_else(|e| {
+                            eprintln!("❌ Error handling request: {}", e);
+                            false
+                        });
 
-                            // Increment visit counter only for main pages (not for static)
-                            if is_main_page {
-                                visits_clone.update(|v| *v += 1);
-                                println!("🌐 Main page visit - visits: {}", visits_clone.get());
-                            }
-
-                            // Decrement connection counter
-                            server.update(|s| s.decrement_connections());
-
-                            // Give browser time to receive response
-                            std::thread::sleep(Duration::from_millis(200));
+                        // Increment visit counter only for main pages (not for static)
+                        if is_main_page {
+                            visits_clone.update(|v| *v += 1);
+                            println!("🌐 Main page visit - visits: {}", visits_clone.get());
                         }
-                        Err(e) => {
-                            eprintln!("❌ Connection failed: {}", e);
-                        }
+
+                        // Decrement connection counter
+                        server.update(|s| s.decrement_connections());
+
+                        // Give browser time to receive response
+                        std::thread::sleep(Duration::from_millis(200));
                     }
-
-                    // Check if server should stop
-                    if !server.get().is_running {
-                        break;
+                    Err(e) => {
+                        eprintln!("❌ Connection failed: {}", e);
                     }
                 }
 
-                println!("🌐 Server main thread finished");
-            },
-        )
-        .expect("Failed to spawn server_main");
+                // Check if server should stop
+                if !server.get().is_running {
+                    break;
+                }
+            }
 
-    // Start monitoring through spawn_workers
-    spawn_workers!(server, {
+            println!("🌐 Server main thread finished");
+        },
+
         monitor: |server: thread_share::ThreadShare<HttpServer>| {
             println!("📊 Monitor thread started");
 
