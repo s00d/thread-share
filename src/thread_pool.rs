@@ -477,7 +477,8 @@ impl ThreadManager {
         drop(threads);
 
         for (name, handle) in thread_handles {
-            if let Err(e) = handle.join() {
+            let result = handle.join();
+            if let Err(e) = result {
                 return Err(format!("Thread '{}' failed: {:?}", name, e));
             }
         }

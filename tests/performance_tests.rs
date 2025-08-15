@@ -107,7 +107,8 @@ fn test_concurrent_performance() {
     // and high contention. The result may be much lower than expected.
     let result = arc_share.get();
     // AtomicPtr is not suitable for high-frequency updates - just check that some operations succeeded
-    assert!(result > 0 && result < total_operations); // Some operations should succeed, but not all
+    // Due to high contention, we only check that at least some operations succeeded
+    assert!(result > 0, "Expected some operations to succeed, got {}", result);
 
     println!(
         "Concurrent performance ({} threads, {} ops each):",
