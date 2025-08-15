@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant};
-use thread_share::{enhanced_share, share};
+use thread_share::{enhanced_share, spawn_workers};
 
 // Простой HTTP сервер
 #[derive(Clone, Debug)]
@@ -171,9 +171,9 @@ fn main() {
     let server = enhanced_share!(HttpServer::new(port));
 
     // Создаем счетчик переходов (как в basic_usage.rs) - без клонов!
-    let visits = share!(0);
+    let visits = enhanced_share!(0);
 
-    // Запускаем потоки напрямую через EnhancedThreadShare
+    // Запускаем основной поток сервера
     let visits_clone = visits.clone();
     server
         .spawn(
@@ -239,28 +239,31 @@ fn main() {
         )
         .expect("Failed to spawn server_main");
 
-    server.spawn("monitor", |server: thread_share::ThreadShare<HttpServer>| {
-        println!("📊 Monitor thread started");
+    // Запускаем мониторинг через spawn_workers
+    spawn_workers!(server, {
+        monitor: |server: thread_share::ThreadShare<HttpServer>| {
+            println!("📊 Monitor thread started");
 
-        // Мониторим сервер в реальном времени
-        for _ in 1..=30 {
-            let current_server = server.get();
+            // Мониторим сервер в реальном времени
+            for _ in 1..=30 {
+                let current_server = server.get();
 
-            if current_server.is_running {
-                println!("📊 Server Status: Running | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
-                    current_server.port,
-                    current_server.requests_handled,
-                    current_server.active_connections,
-                    current_server.get_uptime()
-                );
+                if current_server.is_running {
+                    println!("📊 Server Status: Running | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
+                        current_server.port,
+                        current_server.requests_handled,
+                        current_server.active_connections,
+                        current_server.get_uptime()
+                    );
+                }
+                std::thread::sleep(Duration::from_secs(2));
             }
-            std::thread::sleep(Duration::from_secs(2));
+            // Останавливаем сервер через 1 минуту
+            println!("⏰ Stopping server after 1 minute...");
+            server.update(|s| s.stop());
+            println!("📊 Monitor thread finished");
         }
-        // Останавливаем сервер через 1 минуту
-        println!("⏰ Stopping server after 1 minute...");
-        server.update(|s| s.stop());
-        println!("📊 Monitor thread finished");
-    }).expect("Failed to spawn monitor");
+    });
 
     // Убираем симуляцию - visits будет увеличиваться только при реальных HTTP запросах
 
