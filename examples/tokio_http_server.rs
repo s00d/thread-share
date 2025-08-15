@@ -56,7 +56,7 @@ async fn main() {
 
     // Start all async workers with spawn_workers!
     let visits_clone = visits.clone();
-    spawn_workers!(server, {
+    let manager = spawn_workers!(server, {
         server_main: move |server: thread_share::ThreadShare<AsyncHttpServer>| {
             println!("🌐 Tokio server main worker started");
             
@@ -78,7 +78,7 @@ async fn main() {
                 // Accept connections
                 loop {
                     match listener.accept().await {
-                        Ok((stream, addr)) => {
+                        Ok((stream, _addr)) => {
                             // Increment connection counter
                             server.update(|s| s.increment_connections());
                             
@@ -103,41 +103,62 @@ async fn main() {
                 
                 println!("🌐 Tokio server main worker finished");
             });
-        },
-
-        monitor: |server: thread_share::ThreadShare<AsyncHttpServer>| {
-            println!("📊 Tokio monitor worker started");
-            
-            // Create runtime for this worker
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            
-            rt.block_on(async {
-                // Monitor server in real-time
-                for i in 1..=30 {
-                    let current_server = server.get();
-                    
-                    if current_server.is_running {
-                        println!("📊 Tokio Server Status: Running | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
-                            current_server.port,
-                            current_server.requests_handled,
-                            current_server.active_connections,
-                            current_server.get_uptime()
-                        );
-                    }
-                    
-                    tokio::time::sleep(Duration::from_secs(2)).await;
-                }
-                
-                // Stop server after 1 minute
-                println!("⏰ Stopping tokio server after 1 minute...");
-                server.update(|s| s.stop());
-                println!("📊 Tokio monitor worker finished");
-            });
         }
     });
 
+    // Demonstrate worker management
+    println!("🔧 Worker Manager Demo:");
+    println!("📋 Worker names: {:?}", manager.get_worker_names());
+    println!("🔢 Active workers: {}", manager.active_workers());
+
+    // Add stats monitor worker programmatically
+    println!("\n➕ Adding stats monitor worker programmatically...");
+    let server_clone = server.clone();
+    let stats_handle = std::thread::spawn(move || {
+        println!("📊 Stats monitor worker started");
+        
+        // Create runtime for this worker
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        
+        rt.block_on(async {
+            // Monitor server statistics every 3 seconds
+            for _i in 1..=20 { // 20 iterations * 3 seconds = 1 minute
+                let current_server = server_clone.get();
+                
+                if current_server.is_running {
+                    println!("📊 Tokio Server Stats | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
+                        current_server.port,
+                        current_server.requests_handled,
+                        current_server.active_connections,
+                        current_server.get_uptime()
+                    );
+                } else {
+                    println!("📊 Server stopped, stats monitor exiting");
+                    break;
+                }
+                
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            }
+            
+            // Stop server after 1 minute by stopping the main worker
+            println!("⏰ Stopping tokio server after 1 minute...");
+            server_clone.update(|s| s.stop());
+            println!("📊 Stats monitor worker finished");
+        });
+    });
+
+    // Add the stats monitor to the manager
+    if let Err(e) = manager.add_worker("stats_monitor", stats_handle) {
+        println!("❌ Failed to add stats monitor: {}", e);
+    } else {
+        println!("✅ Stats monitor worker added successfully");
+    }
+
+    println!("📋 Updated worker names: {:?}", manager.get_worker_names());
+    println!("🔢 Updated active workers: {}", manager.active_workers());
+
     // Wait for all workers to complete
-    server.join_all().expect("Failed to join tokio workers");
+    manager.join_all().expect("Failed to join tokio workers");
     
     println!("✅ Tokio HTTP server completed successfully!");
 }
@@ -290,16 +311,6 @@ struct AsyncHttpServer {
 }
 
 impl AsyncHttpServer {
-    fn new(port: u16) -> Self {
-        Self {
-            port,
-            is_running: true,
-            requests_handled: 0,
-            active_connections: 0,
-            start_time: Instant::now(),
-        }
-    }
-    
     fn start(&mut self) -> Result<(), String> {
         self.is_running = true;
         self.start_time = Instant::now();

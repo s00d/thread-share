@@ -203,6 +203,7 @@ pub mod enhanced;
 pub mod locked;
 pub mod macros;
 pub mod thread_pool;
+pub mod worker_manager;
 
 // Re-export main structures
 pub use atomic::ArcThreadShare;
@@ -210,3 +211,5 @@ pub use core::{SimpleShare, ThreadShare};
 pub use enhanced::EnhancedThreadShare;
 pub use locked::ArcThreadShareLocked;
 pub use thread_pool::ThreadManager;
+
+

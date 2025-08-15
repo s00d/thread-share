@@ -500,7 +500,7 @@ simple_share!(data)
 // Creates EnhancedThreadShare<T>
 enhanced_share!(data)
 
-// Spawns multiple threads with EnhancedThreadShare
+// Spawns multiple threads with EnhancedThreadShare and returns WorkerManager
 spawn_workers!(shared_data, {
     thread_name1: |data| { /* thread logic */ },
     thread_name2: |data| { /* thread logic */ },
@@ -511,6 +511,342 @@ spawn_workers!(shared_data, {
 spawn_threads!(manager, shared_data, { name: |data| logic })
 thread_setup!(shared_data, { name: |data| logic })
 ```
+
+## 🚀 spawn_workers! Macro with WorkerManager
+
+The `spawn_workers!` macro is the most powerful way to manage multiple threads. It returns a `WorkerManager` instance that provides fine-grained control over individual workers.
+
+### 🔧 What spawn_workers! Returns
+
+```rust
+let manager = spawn_workers!(data, {
+    worker1: |data| { /* logic */ },
+    worker2: |data| { /* logic */ }
+});
+
+// manager is a WorkerManager instance
+println!("Active workers: {}", manager.active_workers());
+println!("Worker names: {:?}", manager.get_worker_names());
+```
+
+### 🎮 WorkerManager Capabilities
+
+The `WorkerManager` provides comprehensive control over your workers:
+
+#### **Worker Lifecycle Management**
+```rust
+// Add new workers programmatically
+let handle = std::thread::spawn(|| { /* work */ });
+manager.add_worker("new_worker", handle)?;
+
+// Remove specific workers
+manager.remove_worker("worker1")?;
+
+// Remove all workers
+manager.remove_all_workers()?;
+```
+
+#### **Worker State Control**
+```rust
+// Pause/resume workers
+manager.pause_worker("worker1")?;
+manager.resume_worker("worker1")?;
+
+// Check worker status
+if manager.is_worker_paused("worker1") {
+    println!("Worker1 is paused");
+}
+```
+
+#### **Monitoring and Information**
+```rust
+// Get worker information
+let names = manager.get_worker_names();
+let count = manager.active_workers();
+
+println!("Active workers: {}", count);
+println!("Worker names: {:?}", names);
+```
+
+#### **Synchronization**
+```rust
+// Wait for all workers to complete
+manager.join_all()?;
+```
+
+### 📱 Real-World Example: HTTP Server with WorkerManager
+
+Here's how `WorkerManager` is used in the HTTP server examples:
+
+#### **Async-std HTTP Server** (`examples/async_std_http_server.rs`)
+
+```rust
+use thread_share::{enhanced_share, spawn_workers};
+
+fn main() {
+    // Create shared server state
+    let server = enhanced_share!(AsyncStdHttpServer {
+        port: 8082,
+        is_running: true,
+        requests_handled: 0,
+        active_connections: 0,
+        start_time: Instant::now(),
+    });
+
+    // Start main server worker
+    let manager = spawn_workers!(server, {
+        server_main: move |server| {
+            // Main server logic - accepts connections
+            async_std::task::block_on(async {
+                let listener = TcpListener::bind("127.0.0.1:8082").await?;
+                
+                loop {
+                    if !server.get().is_running { break; }
+                    // Handle connections...
+                }
+            });
+        }
+    });
+
+    // Add stats monitor worker programmatically
+    let server_clone = server.clone();
+    let stats_handle = std::thread::spawn(move || {
+        for _ in 0..20 { // 20 iterations * 3 seconds = 1 minute
+            let stats = server_clone.get();
+            println!("📊 Server Stats | Port: {} | Requests: {} | Connections: {}", 
+                stats.port, stats.requests_handled, stats.active_connections);
+            
+            std::thread::sleep(Duration::from_secs(3));
+        }
+        
+        // Stop server after 1 minute
+        server_clone.update(|s| s.stop());
+    });
+
+    // Add to manager for tracking
+    manager.add_worker("stats_monitor", stats_handle)?;
+
+    // Wait for all workers to complete
+    manager.join_all()?;
+}
+```
+
+#### **Tokio HTTP Server** (`examples/tokio_http_server.rs`)
+
+```rust
+use thread_share::{enhanced_share, spawn_workers};
+
+fn main() {
+    // Create shared server state
+    let server = enhanced_share!(AsyncHttpServer {
+        port: 8081,
+        is_running: true,
+        requests_handled: 0,
+        active_connections: 0,
+        start_time: Instant::now(),
+    });
+
+    // Start main server worker
+    let manager = spawn_workers!(server, {
+        server_main: move |server| {
+            // Main server logic with Tokio runtime
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let listener = TcpListener::bind("127.0.0.1:8081").await?;
+                
+                loop {
+                    if !server.get().is_running { break; }
+                    // Handle connections...
+                }
+            });
+        }
+    });
+
+    // Add stats monitor worker programmatically
+    let server_clone = server.clone();
+    let stats_handle = std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            for _ in 0..20 {
+                let stats = server_clone.get();
+                println!("📊 Tokio Server Stats | Port: {} | Requests: {} | Connections: {}", 
+                    stats.port, stats.requests_handled, stats.active_connections);
+                
+                tokio::time::sleep(Duration::from_secs(3)).await;
+            }
+            
+            // Stop server after 1 minute
+            server_clone.update(|s| s.stop());
+        });
+    });
+
+    // Add to manager for tracking
+    manager.add_worker("stats_monitor", stats_handle)?;
+
+    // Wait for all workers to complete
+    manager.join_all()?;
+}
+```
+
+### 🎯 Key Benefits of WorkerManager
+
+1. **🔄 Dynamic Worker Management**: Add/remove workers at runtime
+2. **⏸️ State Control**: Pause/resume individual workers
+3. **📊 Real-time Monitoring**: Track worker status and count
+4. **🔒 Thread Safety**: All operations are thread-safe
+5. **🎮 Fine-grained Control**: Manage each worker individually
+6. **📈 Scalability**: Handle hundreds of workers efficiently
+7. **🛡️ Error Handling**: Graceful error handling for all operations
+
+### 🚦 When to Use WorkerManager
+
+- **Complex Applications**: When you need fine-grained control over workers
+- **Dynamic Workloads**: When worker count changes at runtime
+- **Monitoring Requirements**: When you need real-time worker status
+- **Production Systems**: When you need robust worker management
+- **Debugging**: When you need to pause/resume workers for debugging
+
+### 🔨 Creating WorkerManager Directly
+
+You can also create `WorkerManager` directly without using the `spawn_workers!` macro:
+
+```rust
+use thread_share::{enhanced_share, worker_manager::WorkerManager};
+use std::thread;
+use std::time::{Duration, Instant};
+
+#[derive(Clone, Debug)]
+struct TaskProcessor {
+    task_count: u32,
+    completed_tasks: u32,
+    is_running: bool,
+    start_time: Instant,
+    last_activity: Instant,
+}
+
+impl TaskProcessor {
+    fn new() -> Self {
+        Self {
+            task_count: 0,
+            completed_tasks: 0,
+            is_running: true,
+            start_time: Instant::now(),
+            last_activity: Instant::now(),
+        }
+    }
+    
+    fn add_task(&mut self) {
+        self.task_count += 1;
+        self.last_activity = Instant::now();
+    }
+    
+    fn complete_task(&mut self) {
+        if self.completed_tasks < self.task_count {
+            self.completed_tasks += 1;
+            self.last_activity = Instant::now();
+        }
+    }
+    
+    fn get_progress(&self) -> f32 {
+        if self.task_count == 0 { 0.0 } else { 
+            (self.completed_tasks as f32 / self.task_count as f32) * 100.0 
+        }
+    }
+    
+    fn get_uptime(&self) -> Duration {
+        self.start_time.elapsed()
+    }
+}
+
+fn main() {
+    // Create shared task processor
+    let processor = enhanced_share!(TaskProcessor::new());
+    
+    // Create WorkerManager directly
+    let manager = WorkerManager::new(processor.get_threads());
+    
+    // Spawn task generator worker
+    let processor_clone1 = processor.clone();
+    let handle1 = thread::spawn(move || {
+        for i in 0..15 {
+            processor_clone1.update(|p| p.add_task());
+            println!("📝 Generated task {}", i + 1);
+            thread::sleep(Duration::from_millis(200));
+        }
+    });
+    
+    // Spawn task executor worker
+    let processor_clone2 = processor.clone();
+    let handle2 = thread::spawn(move || {
+        loop {
+            let current = processor_clone2.get();
+            if current.completed_tasks >= current.task_count && current.task_count > 0 {
+                break;
+            }
+            
+            if current.completed_tasks < current.task_count {
+                processor_clone2.update(|p| p.complete_task());
+                println!("✅ Completed task {}", current.completed_tasks + 1);
+            }
+            
+            thread::sleep(Duration::from_millis(300));
+        }
+    });
+    
+    // Add workers to manager
+    manager.add_worker("task_generator", handle1)?;
+    manager.add_worker("task_executor", handle2)?;
+    
+    // Add monitoring worker dynamically
+    let processor_clone3 = processor.clone();
+    let handle3 = thread::spawn(move || {
+        for _ in 0..30 { // Monitor for 30 iterations
+            let stats = processor_clone3.get();
+            println!("📊 Progress: {:.1}% | Tasks: {}/{} | Uptime: {:.1}s", 
+                stats.get_progress(),
+                stats.completed_tasks,
+                stats.task_count,
+                stats.get_uptime().as_secs_f32()
+            );
+            thread::sleep(Duration::from_millis(500));
+        }
+    });
+    
+    manager.add_worker("monitor", handle3)?;
+    
+    // Control workers
+    println!("🚀 Started with {} workers", manager.active_workers());
+    println!("👥 Worker names: {:?}", manager.get_worker_names());
+    
+    // Pause task generation temporarily
+    thread::sleep(Duration::from_secs(2));
+    manager.pause_worker("task_generator")?;
+    println!("⏸️ Paused task generation for 1 second");
+    thread::sleep(Duration::from_secs(1));
+    
+    // Resume task generation
+    manager.resume_worker("task_generator")?;
+    println!("▶️ Resumed task generation");
+    
+    // Wait for all workers to complete
+    manager.join_all()?;
+    
+    let final_stats = processor.get();
+    println!("🎉 Final results:");
+    println!("   • Total tasks: {}", final_stats.task_count);
+    println!("   • Completed: {}", final_stats.completed_tasks);
+    println!("   • Progress: {:.1}%", final_stats.get_progress());
+    println!("   • Total uptime: {:.1}s", final_stats.get_uptime().as_secs_f32());
+}
+```
+
+**Key differences from macro approach:**
+
+1. **Manual Control**: You control exactly when and how workers are created
+2. **Dynamic Addition**: Add workers at any time during execution
+3. **Custom Logic**: Implement complex worker spawning logic
+4. **Conditional Workers**: Create workers based on runtime conditions
+5. **Integration**: Easily integrate with existing thread management code
 
 ## 🎯 Usage Patterns
 

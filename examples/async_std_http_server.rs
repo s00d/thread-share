@@ -59,7 +59,7 @@ async fn main() {
 
     // Start all async workers with spawn_workers!
     let visits_clone = visits.clone();
-    spawn_workers!(server, {
+    let manager = spawn_workers!(server, {
         server_main: move |server: thread_share::ThreadShare<AsyncStdHttpServer>| {
             println!("🌐 Async-std server main worker started");
             
@@ -105,47 +105,57 @@ async fn main() {
                 
                 println!("🌐 Async-std server main worker finished");
             });
-        },
-
-        monitor: |server: thread_share::ThreadShare<AsyncStdHttpServer>| {
-            println!("📊 Async-std monitor worker started");
-            
-            // Monitor server in real-time
-            task::spawn(async move {
-                let mut i = 0;
-                loop {
-                    let current_server = server.get();
-                    
-                    if current_server.is_running {
-                        println!("📊 Async-std Server Status: Running | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
-                            current_server.port,
-                            current_server.requests_handled,
-                            current_server.active_connections,
-                            current_server.get_uptime()
-                        );
-                    } else {
-                        println!("📊 Server stopped, monitor exiting");
-                        break;
-                    }
-                    
-                    i += 1;
-                    if i >= 30 {
-                        // Stop server after 1 minute
-                        println!("⏰ Stopping async-std server after 1 minute...");
-                        server.update(|s| s.stop());
-                        break;
-                    }
-                    
-                    task::sleep(Duration::from_secs(2)).await;
-                }
-                
-                println!("📊 Async-std monitor worker finished");
-            });
         }
     });
 
+    // Demonstrate worker management
+    println!("🔧 Worker Manager Demo:");
+    println!("📋 Worker names: {:?}", manager.get_worker_names());
+    println!("🔢 Active workers: {}", manager.active_workers());
+
+    // Add stats monitor worker programmatically
+    println!("\n➕ Adding stats monitor worker programmatically...");
+    let server_clone = server.clone();
+    let stats_handle = std::thread::spawn(move || {
+        println!("📊 Stats monitor worker started");
+        
+        // Monitor server statistics every 3 seconds
+        for _i in 1..=20 { // 20 iterations * 3 seconds = 1 minute
+            let current_server = server_clone.get();
+            
+            if current_server.is_running {
+                println!("📊 Async-std Server Stats | Port: {} | Requests: {} | Connections: {} | Uptime: {}", 
+                    current_server.port,
+                    current_server.requests_handled,
+                    current_server.active_connections,
+                    current_server.get_uptime()
+                );
+            } else {
+                println!("📊 Server stopped, stats monitor exiting");
+                break;
+            }
+            
+            std::thread::sleep(Duration::from_secs(3));
+        }
+        
+        // Stop server after 1 minute by stopping the main worker
+        println!("⏰ Stopping async-std server after 1 minute...");
+        server_clone.update(|s| s.stop());
+        println!("📊 Stats monitor worker finished");
+    });
+
+    // Add the stats monitor to the manager
+    if let Err(e) = manager.add_worker("stats_monitor", stats_handle) {
+        println!("❌ Failed to add stats monitor: {}", e);
+    } else {
+        println!("✅ Stats monitor worker added successfully");
+    }
+
+    println!("📋 Updated worker names: {:?}", manager.get_worker_names());
+    println!("🔢 Updated active workers: {}", manager.active_workers());
+
     // Wait for all workers to complete
-    server.join_all().expect("Failed to join async-std workers");
+    manager.join_all().expect("Failed to join async-std workers");
     
     println!("✅ Async-std HTTP server completed successfully!");
 }

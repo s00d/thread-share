@@ -331,3 +331,159 @@ macro_rules! simple_share {
         $crate::SimpleShare::new($data)
     };
 }
+
+/// Macro for creating enhanced thread share with automatic thread management
+///
+/// This macro creates an `EnhancedThreadShare<T>` instance that provides
+/// automatic thread management capabilities.
+///
+/// ## Syntax
+///
+/// `enhanced_share!(expression)`
+///
+/// ## Arguments
+///
+/// * `expression` - The data to wrap in EnhancedThreadShare
+///
+/// ## Returns
+///
+/// A new `EnhancedThreadShare<T>` instance where `T` is inferred from the expression.
+///
+/// ## Example
+///
+/// ```rust
+/// use thread_share::enhanced_share;
+///
+/// // Basic types
+/// let counter = enhanced_share!(0);                    // EnhancedThreadShare<i32>
+/// let message = enhanced_share!(String::from("Hello")); // EnhancedThreadShare<String>
+/// let data = enhanced_share!(vec![1, 2, 3]);          // EnhancedThreadShare<Vec<i32>>
+/// ```
+///
+/// ## Key Features
+///
+/// - **Automatic Thread Management**: Spawn threads with a single method call
+/// - **Built-in Thread Tracking**: Monitor active thread count and status
+/// - **Automatic Thread Joining**: Wait for all threads to complete with `join_all()`
+/// - **Thread Naming**: Give meaningful names to threads for debugging
+/// - **All ThreadShare Features**: Inherits all capabilities from `ThreadShare<T>`
+///
+/// ## When to Use
+///
+/// Use `enhanced_share!` when you need:
+/// - Complex multi-threaded applications
+/// - Automatic thread lifecycle management
+/// - Thread monitoring and debugging
+/// - High-level thread coordination
+///
+/// Use `share!` when you need:
+/// - Simple data sharing without thread management
+/// - Manual thread control
+/// - Minimal overhead
+#[macro_export]
+macro_rules! enhanced_share {
+    ($data:expr) => {
+        $crate::enhanced::EnhancedThreadShare::new($data)
+    };
+}
+
+/// Macro for simplified multi-threaded setup with WorkerManager
+///
+/// This macro spawns multiple threads and returns a `WorkerManager` instance
+/// that allows you to control individual workers: pause, resume, stop, and monitor them.
+///
+/// ## Syntax
+///
+/// `spawn_workers!(shared_data, { name: closure, ... })`
+///
+/// ## Arguments
+///
+/// * `shared_data` - An `EnhancedThreadShare<T>` instance to share between workers
+/// * `{ name: closure, ... }` - Named closures for each worker thread
+///
+/// ## Returns
+///
+/// A `WorkerManager` instance that provides methods to control workers:
+/// - `add_worker(name, handle)` - Add a new worker programmatically
+/// - `pause_worker(name)` - Mark a worker for pause
+/// - `resume_worker(name)` - Resume a paused worker
+/// - `remove_worker(name)` - Remove worker from tracking
+/// - `get_worker_names()` - Get list of all worker names
+/// - `active_workers()` - Get count of active workers
+/// - `join_all()` - Wait for all workers to complete
+///
+/// ## Example
+///
+/// ```rust
+/// use thread_share::{enhanced_share, spawn_workers};
+///
+/// let data = enhanced_share!(vec![1, 2, 3]);
+///
+/// // Spawn workers and get manager
+/// let manager = spawn_workers!(data, {
+///     sorter: |data| {
+///         data.update(|v| v.sort());
+///     },
+///     validator: |data| {
+///         assert!(data.get().is_sorted());
+///     }
+/// });
+///
+/// // Control workers
+/// println!("Workers: {:?}", manager.get_worker_names());
+/// println!("Active: {}", manager.active_workers());
+///
+/// // Wait for completion
+/// manager.join_all().expect("Workers failed");
+/// ```
+///
+/// ## Worker Management
+///
+/// The `WorkerManager` allows fine-grained control over individual workers:
+///
+/// ```rust
+/// use thread_share::{enhanced_share, spawn_workers};
+///
+/// let data = enhanced_share!(vec![1, 2, 3]);
+/// let manager = spawn_workers!(data, {
+///     sorter: |data| { /* work */ },
+///     validator: |data| { /* work */ }
+/// });
+///
+/// // Pause a specific worker
+/// let _ = manager.pause_worker("sorter");
+///
+/// // Resume a worker
+/// let _ = manager.resume_worker("sorter");
+///
+/// // Add a new worker programmatically
+/// let handle = std::thread::spawn(|| { /* work */ });
+/// let _ = manager.add_worker("new_worker", handle);
+///
+/// // Remove from tracking
+/// let _ = manager.remove_worker("sorter");
+/// ```
+///
+/// ## Requirements
+///
+/// - The shared data must be an `EnhancedThreadShare<T>` instance
+/// - Each closure must implement `FnOnce(ThreadShare<T>) + Send + 'static`
+/// - The type `T` must implement `Send + Sync + 'static`
+///
+/// ## Performance
+///
+/// - **Thread Spawning**: Minimal overhead over standard `thread::spawn`
+/// - **Worker Management**: Constant-time operations for most management functions
+/// - **Memory Usage**: Small overhead for worker tracking structures
+/// - **Scalability**: Efficient for up to hundreds of workers
+#[macro_export]
+macro_rules! spawn_workers {
+    ($shared:expr, { $($name:ident: $func:expr),* }) => {
+        {
+            $(
+                $shared.spawn(stringify!($name), $func).expect(&format!("Failed to spawn {}", stringify!($name)));
+            )*
+            $crate::worker_manager::WorkerManager::new($shared.get_threads())
+        }
+    };
+}

@@ -527,6 +527,11 @@ impl<T> EnhancedThreadShare<T> {
         self.threads.lock().unwrap().is_empty()
     }
 
+    /// Gets a reference to the threads HashMap for external management
+    pub fn get_threads(&self) -> Arc<Mutex<HashMap<String, thread::JoinHandle<()>>>> {
+        self.threads.clone()
+    }
+
     /// Delegates all ThreadShare methods
     ///
     /// Gets a copy of the shared data.
@@ -620,22 +625,6 @@ impl<T> Clone for EnhancedThreadShare<T> {
     }
 }
 
-/// Macro for creating enhanced thread share with automatic thread management
-#[macro_export]
-macro_rules! enhanced_share {
-    ($data:expr) => {
-        $crate::enhanced::EnhancedThreadShare::new($data)
-    };
-}
 
-/// Macro for simplified multi-threaded setup
-#[macro_export]
-macro_rules! spawn_workers {
-    ($shared:expr, { $($name:ident: $func:expr),* }) => {
-        {
-            $(
-                $shared.spawn(stringify!($name), $func).expect(&format!("Failed to spawn {}", stringify!($name)));
-            )*
-        }
-    };
-}
+
+
