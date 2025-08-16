@@ -11,9 +11,9 @@
 //! - **`share!`** - Creates `ThreadShare<T>` instances with automatic type inference
 //! - **`simple_share!`** - Creates `SimpleShare<T>` instances for basic use cases
 //! - **`enhanced_share!`** - Creates `EnhancedThreadShare<T>` instances
-//! - **`spawn_workers!`** - Spawns multiple threads with single macro call
-//! - **`spawn_threads!`** - Alternative thread spawning macro
-//! - **`thread_setup!`** - Sets up thread management with shared data
+//! - **`spawn_workers!`** - Spawns multiple threads with single macro call, returns WorkerManager
+//! - **`spawn_threads!`** - Alternative thread spawning macro for ThreadManager
+//! - **`thread_setup!`** - Sets up thread management with shared data, returns ThreadManager
 //!
 //! ## Key Benefits
 //!
@@ -484,6 +484,92 @@ macro_rules! spawn_workers {
                 $shared.spawn(stringify!($name), $func).expect(&format!("Failed to spawn {}", stringify!($name)));
             )*
             $crate::worker_manager::WorkerManager::new_with_threads($shared.get_threads())
+        }
+    };
+}
+
+/// Macro for simplified thread spawning
+///
+/// This macro simplifies spawning multiple threads with the same shared data.
+/// It creates a vector of thread configurations and calls `spawn_multiple`.
+///
+/// ## Syntax
+///
+/// `spawn_threads!(manager, shared_data, { name: function, ... })`
+///
+/// ## Arguments
+///
+/// * `manager` - The ThreadManager instance
+/// * `shared_data` - The ThreadShare<T> data to share
+/// * `{ name: function, ... }` - Named thread functions
+///
+/// ## Returns
+///
+/// `Result<(), String>` from `spawn_multiple`.
+///
+/// ## Performance
+///
+/// - **Compile-time expansion**: No runtime overhead
+/// - **Efficient spawning**: Same performance as manual `spawn_multiple`
+/// - **Type safety**: Compile-time type checking
+/// - **Memory usage**: No additional allocations
+#[macro_export]
+macro_rules! spawn_threads {
+    ($manager:expr, $shared_data:expr, { $($name:ident: $func:expr),* }) => {
+        {
+            let configs = vec![
+                $(
+                    (stringify!($name), $func)
+                ),*
+            ];
+            $manager.spawn_multiple($shared_data, configs)
+        }
+    };
+}
+
+/// Macro for creating a complete thread setup
+///
+/// This macro creates a ThreadManager and spawns multiple threads with shared data
+/// in a single call, returning the manager for further control.
+///
+/// ## Syntax
+///
+/// `thread_setup!(shared_data, { name: function, ... })`
+///
+/// ## Arguments
+///
+/// * `shared_data` - The ThreadShare<T> data to share
+/// * `{ name: function, ... }` - Named thread functions
+///
+/// ## Returns
+///
+/// A `ThreadManager` instance that can be used to control the spawned threads.
+///
+/// ## Example
+///
+/// ```rust
+/// use thread_share::{share, thread_setup};
+///
+/// let data = share!(0);
+///
+/// let manager = thread_setup!(data, {
+///     counter: |data| { data.update(|x| *x += 1); },
+///     monitor: |data| { println!("Value: {}", data.get()); }
+/// });
+///
+/// // Wait for all threads
+/// manager.join_all().expect("Failed to join threads");
+/// ```
+#[macro_export]
+macro_rules! thread_setup {
+    ($shared_data:expr, { $($name:ident: $func:expr),* }) => {
+        {
+            let manager = $crate::thread_pool::ThreadManager::new();
+            $(
+                manager.spawn(stringify!($name), $shared_data.clone(), $func)
+                    .expect(&format!("Failed to spawn {}", stringify!($name)));
+            )*
+            manager
         }
     };
 }
