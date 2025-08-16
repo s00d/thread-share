@@ -179,10 +179,11 @@
 //! });
 //! ```
 
-use std::sync::{
-    atomic::{AtomicPtr, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::sync::Arc;
+
+#[cfg(feature = "serialize")]
+use serde::{de::DeserializeOwned, Serialize};
 
 /// Helper structure for working with Arc<AtomicPtr<T>> directly (without locks!)
 ///
@@ -541,6 +542,22 @@ impl<T> ArcThreadShare<T> {
         } else {
             panic!("Attempted to write to null pointer");
         }
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn to_json(&self) -> Result<String, serde_json::Error>
+    where
+        T: Serialize + Clone,
+    {
+        serde_json::to_string(&self.get())
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn from_json<D>(&self, json: &str) -> Result<D, serde_json::Error>
+    where
+        D: DeserializeOwned,
+    {
+        serde_json::from_str(json)
     }
 }
 
