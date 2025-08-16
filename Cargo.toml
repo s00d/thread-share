@@ -1,6 +1,6 @@
 [package]
 name = "thread-share"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2024"
 authors = ["s00d <s00d@github.com>"]
 description = "A Rust library for safe and efficient data sharing between threads with zero-copy operations, change detection, and enhanced thread management."
@@ -37,3 +37,4 @@ async-std = { version = "1.0", features = ["attributes", "tokio1"] }
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+exclude = ["examples/*"]
