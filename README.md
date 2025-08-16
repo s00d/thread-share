@@ -63,15 +63,14 @@ The library automatically handles:
 
 ## 📦 Installation
 
-Add to your `Cargo.toml`:
+Instead of manually editing `Cargo.toml`, use commands:
 
-```toml
-[dependencies]
-thread-share = "0.1.1"
+```bash
+# Basic installation
+cargo add thread-share
 
-# Optional: Enable serialization support
-[dependencies]
-thread-share = { version = "0.1.1", features = ["serialize"] }
+# With serialization support
+cargo add thread-share --features serialize
 ```
 
 ### Features
