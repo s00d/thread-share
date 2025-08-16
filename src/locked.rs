@@ -165,6 +165,9 @@
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[cfg(feature = "serialize")]
+use serde::{de::DeserializeOwned};
+
 /// Helper structure for working with Arc<RwLock<T>> directly (with locks)
 ///
 /// `ArcThreadShareLocked<T>` is the **recommended alternative** to `ArcThreadShare<T>`
@@ -569,5 +572,18 @@ impl<T> ArcThreadShareLocked<T> {
     {
         let mut data = self.data.write();
         f(&mut data)
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn to_json(&self) -> Result<String, serde_json::Error>
+    where
+        T: serde::Serialize + Clone,
+    {
+        serde_json::to_string(&self.get())
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn from_json<D: DeserializeOwned>(&self, json: &str) -> Result<D, serde_json::Error> {
+        serde_json::from_str(json)
     }
 }
