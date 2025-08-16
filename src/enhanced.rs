@@ -203,10 +203,13 @@
 //! | **Debugging** | No thread identification | Named threads |
 //! | **Code Complexity** | High | Low |
 
-use crate::core::ThreadShare;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self};
+use crate::core::ThreadShare;
+
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Deserialize};
 
 /// Enhanced ThreadShare with built-in thread management
 ///
@@ -622,6 +625,59 @@ impl<T> EnhancedThreadShare<T> {
 impl<T> Clone for EnhancedThreadShare<T> {
     fn clone(&self) -> Self {
         self.clone()
+    }
+}
+
+#[cfg(feature = "serialize")]
+impl<T: Serialize + Clone + for<'de> Deserialize<'de>> EnhancedThreadShare<T> {
+    /// Serializes the shared data to JSON
+    ///
+    /// This method serializes the current data of type `T` to a JSON string.
+    ///
+    /// ## Returns
+    ///
+    /// A JSON string representation of the data.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use thread_share::EnhancedThreadShare;
+    ///
+    /// let enhanced = EnhancedThreadShare::new(42);
+    /// let json_string = enhanced.to_json().expect("Failed to serialize");
+    /// assert_eq!(json_string, "42");
+    /// ```
+    pub fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(&self.inner.get())
+    }
+
+    /// Deserializes JSON data back into the shared data
+    ///
+    /// This method takes a JSON string and attempts to deserialize it back into
+    /// the shared data type `T`.
+    ///
+    /// ## Arguments
+    ///
+    /// * `json_string` - The JSON string to deserialize
+    ///
+    /// ## Returns
+    ///
+    /// `Ok(())` on success, `Err(serde_json::Error)` if deserialization fails.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use thread_share::EnhancedThreadShare;
+    ///
+    /// let enhanced = EnhancedThreadShare::new(42);
+    /// let json_string = enhanced.to_json().unwrap();
+    /// enhanced.from_json(&json_string).unwrap();
+    /// assert_eq!(enhanced.get(), 42);
+    /// ```
+    pub fn from_json(&self, json_string: &str) -> Result<(), serde_json::Error> {
+        let data: T = serde_json::from_str(json_string)?;
+        self.set(data);
+        Ok(())
     }
 }
 
